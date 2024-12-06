@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>회의실 예약 시스템</title>
+    <link rel="stylesheet" href="styles.css" type="text/css">
+    <style>
+        body {
+            background-color: skyblue;
+            font-family: Arial, sans-serif;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 20px;
+            margin: 20px;
+        }
+        button {
+            background-color: #fff;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #e0e0e0;
+        }
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+        }
+        .calendar-day {
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            text-align: center;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .calendar-day:hover {
+            background-color: #e0e0e0;
+        }
+        .reserved {
+            background-color: #ffcccc;
+        }
+        .time-slot {
+            display: inline-block;
+            padding: 10px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #f0f0f0;
+            transition: background-color 0.3s;
+        }
+        .time-slot.reserved {
+            background-color: #d3d3d3;
+            cursor: not-allowed;
+        }
+        .time-slot:hover:not(.reserved) {
+            background-color: #e0e0e0;
+        }
+        .selected {
+            background-color: #a0c4ff;
+        }
+    </style>
+</head>
+<body>
+    <div id="login-container" class="glass">
+        <h2>로그인</h2>
+        <input type="text" id="employee-number" placeholder="사원번호 입력">
+        <button onclick="login()">로그인</button>
+    </div>
+
+    <div id="profile-container" class="glass" style="display: none;">
+        <h2>프로필</h2>
+        <p id="profile-name"></p>
+        <p id="profile-department"></p>
+        <p id="profile-phone"></p>
+        <button onclick="location.href='reservations.html?employeeNumber=' + document.getElementById('employee-number').value.trim();">내 예약 확인 및 수정</button>
+        <button onclick="showMeetingRooms()">회의실 선택</button>
+    </div>
+
+    <div id="reservation-container" class="glass" style="display: none;">
+        <h2>내 예약</h2>
+        <div id="reservations-list"></div>
+        <button onclick="goBackToProfile('reservation-container')">프로필로 돌아가기</button>
+    </div>
+
+    <div id="meeting-room-container" class="glass" style="display: none;">
+        <h2>회의실 선택</h2>
+        <button onclick="selectRoom('소회의실 1')">소회의실 1</button>
+        <button onclick="selectRoom('소회의실 2')">소회의실 2</button>
+        <button onclick="selectRoom('소회의실 3')">소회의실 3</button>
+        <button onclick="selectRoom('중회의실 1')">중회의실 1</button>
+        <button onclick="selectRoom('중회의실 2')">중회의실 2</button>
+        <button onclick="selectRoom('대회의실')">대회의실</button>
+        <button onclick="goBackToProfile('meeting-room-container')">프로필로 돌아가기</button>
+    </div>
+
+    <div id="calendar-container" class="glass" style="display: none;">
+        <h2>예약 캘린더</h2>
+        <label for="month-select">월 선택:</label>
+        <select id="month-select" onchange="updateCalendar()">
+            <option value="0">1월</option>
+            <option value="1">2월</option>
+            <option value="2">3월</option>
+            <option value="3">4월</option>
+            <option value="4">5월</option>
+            <option value="5">6월</option>
+            <option value="6">7월</option>
+            <option value="7">8월</option>
+            <option value="8">9월</option>
+            <option value="9">10월</option>
+            <option value="10">11월</option>
+            <option value="11">12월</option>
+        </select>
+        <div id="calendar" class="calendar"></div>
+        <button onclick="goBackToProfile('calendar-container')">프로필로 돌아가기</button>
+    </div>
+
+    <div id="booking-container" class="glass" style="display: none;">
+        <h2>예약 상세</h2>
+        <p id="selected-date"></p>
+        <h3>시간 선택:</h3>
+        <div id="time-slots"></div>
+        <label for="purpose">회의 목적:</label>
+        <input type="text" id="purpose" placeholder="회의 목적 입력"><br>
+        <label for="participants">참석 인원:</label>
+        <input type="number" id="participants" min="1" placeholder="참석 인원 수">
+        <button onclick="bookRoom()">예약하기</button>
+        <button onclick="goBackToCalendar()">캘린더로 돌아가기</button>
+    </div>
+
+    <script>
+        let selectedRoom;
+        let selectedDate;
+        let selectedTime;
+
+        document.getElementById('reservation-button').onclick = () => {
+            const employeeNumber = document.getElementById('employee-number').value.trim();
+            if (employeeNumber) {
+                fetch(`https://localhost:5002/api/reservations?employeeNumber=${employeeNumber}`, {
+                    headers: {
+                        'Authorization': 'Bearer ' + getKerberosToken()  // Kerberos 토큰 사용
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const reservationsList = document.getElementById("reservations-list");
+                    reservationsList.innerHTML = "";
+                    data.reservations.forEach(reservation => {
+                        reservationsList.innerHTML += `<p>${reservation.room}, ${reservation.date}, ${reservation.time}</p>`;
+                    });
+                    document.getElementById("profile-container").style.display = "none";
+                    document.getElementById("reservation-container").style.display = "block";
+                });
+            } else {
+                alert("로그인 후 사용 가능합니다.");
+            }
+        };
+    
+        function login() {
+            const employeeNumber = document.getElementById("employee-number").value.trim();
+            if (!employeeNumber) {
+                alert("사원번호를 입력하세요.");
+                return;
+            }
+    
+            fetch('https://localhost:5002/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + getKerberosToken()  // Kerberos 토큰 사용
+                },
+                body: JSON.stringify({ employeeNumber })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById("login-container").style.display = "none";
+                    document.getElementById("profile-container").style.display = "block";
+                    document.getElementById("profile-name").innerText = "이름: " + data.profile.name;
+                    document.getElementById("profile-department").innerText = "부서: " + data.profile.department;
+                    document.getElementById("profile-phone").innerText = "전화번호: " + data.profile.phone;
+                } else {
+                    alert("유효하지 않은 사원 번호입니다.");
+                }
+            })
+            .catch(error => {
+                console.error('사용자 정보를 가져오는 중 오류 발생:', error);
+                alert("서버에 요청을 보내는 중 오류가 발생했습니다.");
+            });
+        }
+    
+        function getKerberosToken() {
+            // 실제 Kerberos 토큰을 얻는 로직이 필요합니다. 이 예시는 토큰을 반환하는 간단한 함수를 나타냅니다.
+            // 클라이언트-서버 간의 인증을 위해 Kerberos 토큰을 요청하는 별도의 과정이 필요합니다.
+            return "your-kerberos-token";
+        }
+
+        function showMeetingRooms() {
+            document.getElementById("profile-container").style.display = "none";
+            document.getElementById("meeting-room-container").style.display = "block";
+        }
+    
+        function selectRoom(roomType) {
+            selectedRoom = roomType;
+            showCalendar();
+        }
+    
+        function showCalendar() {
+            document.getElementById("meeting-room-container").style.display = "none";
+            document.getElementById("calendar-container").style.display = "block";
+            updateCalendar();
+        }
+    
+        function updateCalendar() {
+            const selectedMonth = document.getElementById("month-select").value; // 선택한 월
+            const calendar = document.getElementById("calendar");
+            calendar.innerHTML = "";
+
+            // 해당 월의 일수 계산
+            const daysInMonth = new Date(new Date().getFullYear(), parseInt(selectedMonth) + 1, 0).getDate();
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dayItem = document.createElement("div");
+                dayItem.className = "calendar-day";
+                dayItem.innerText = `${i}일`;
+                dayItem.onclick = () => selectDate(i, selectedMonth);
+                calendar.appendChild(dayItem);
+            }
+
+            // 예약된 시간 표시
+            fetch(`https://localhost:5002/api/reservations?room=${selectedRoom}&month=${selectedMonth}`, {
+                headers: {
+                    'Authorization': 'Bearer ' + getKerberosToken()  // Kerberos 토큰 사용
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                data.reservations.forEach(reservation => {
+                    const [year, month, day] = reservation.date.split('-');
+                    if (parseInt(month) - 1 === parseInt(selectedMonth)) {
+                        const dayItem = [...calendar.children].find(item => item.innerText === `${parseInt(day)}일`);
+                        if (dayItem) {
+                            const timeInfo = document.createElement("div");
+                            timeInfo.innerText = `예약 시간: ${reservation.time}`;
+                            timeInfo.style.fontSize = "0.8em";
+                            dayItem.appendChild(timeInfo);
+                            dayItem.classList.add("reserved");
+                        }
+                    }
+                });
+            });
+        }
+    
+        function selectDate(day, month) {
+            const year = new Date().getFullYear();
+            selectedDate = `${year}-${String(parseInt(month) + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; // YYYY-MM-DD 형식
+            document.getElementById("calendar-container").style.display = "none";
+            document.getElementById("booking-container").style.display = "block";
+            document.getElementById("selected-date").innerText = `선택된 날짜: ${selectedDate}`;
+            showTimeSlots();
+        }
+
+        function showTimeSlots() {
+            const timeSlotsContainer = document.getElementById("time-slots");
+            timeSlotsContainer.innerHTML = "";
+    
+            const times = [
+                "07:00 - 07:30", "07:30 - 08:00", "08:00 - 08:30", "08:30 - 09:00",
+                "09:00 - 09:30", "09:30 - 10:00", "10:00 - 10:30", "10:30 - 11:00",
+                "11:00 - 11:30", "11:30 - 12:00"
+            ];
+    
+            times.forEach(time => {
+                const timeSlot = document.createElement("div");
+                timeSlot.className = "time-slot";
+                timeSlot.innerText = time;
+                timeSlot.onclick = () => selectTimeSlot(time);
+                timeSlotsContainer.appendChild(timeSlot);
+            });
+
+            // 예약된 시간 슬롯 표시
+            fetch(`https://localhost:5002/api/reservations?room=${selectedRoom}&date=${selectedDate}`, {
+                headers: {
+                    'Authorization': 'Bearer ' + getKerberosToken()  // Kerberos 토큰 사용
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                data.reservations.forEach(reservation => {
+                    const reservedSlot = [...timeSlotsContainer.children].find(slot => slot.innerText === reservation.time);
+                    if (reservedSlot) {
+                        reservedSlot.classList.add("reserved");
+                        reservedSlot.onclick = null;
+                    }
+                });
+            });
+        }
+    
+        function selectTimeSlot(time) {
+            const allTimeSlots = document.querySelectorAll(".time-slot");
+            allTimeSlots.forEach(slot => slot.classList.remove("selected"));
+    
+            const selectedSlot = [...allTimeSlots].find(slot => slot.innerText === time);
+            if (selectedSlot && !selectedSlot.classList.contains("reserved")) {
+                selectedSlot.classList.add("selected");
+                selectedTime = time;
+            }
+        }
+    
+        function bookRoom() {
+            const purpose = document.getElementById("purpose").value.trim();
+            const participants = parseInt(document.getElementById("participants").value.trim(), 10);
+            const employeeNumber = document.getElementById("employee-number").value.trim();
+
+            if (!selectedTime || !purpose || !participants || !employeeNumber) {
+                alert("모든 예약 정보를 입력하세요.");
+                return;
+            }
+
+            const reservationData = {
+                room: selectedRoom,
+                date: selectedDate,
+                time: selectedTime,
+                purpose: purpose,
+                participants: participants,
+                employeeNumber: employeeNumber
+            };
+
+            // API 경로로 예약 정보 전송
+            fetch('https://localhost:5002/api/reservations', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + getKerberosToken()  // Kerberos 토큰 사용
+                },
+                body: JSON.stringify(reservationData),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message === '예약이 완료되었습니다.') {
+                    alert("예약이 완료되었습니다.");
+                    updateCalendar(); // 캘린더 업데이트
+                    goBackToProfile('booking-container');
+                } else {
+                    alert(data.error || "예약에 실패했습니다.");
+                }
+            })
+            .catch(error => {
+                console.error('예약 정보를 보내는 중 오류 발생:', error);
+                alert("서버에 요청을 보내는 중 오류가 발생했습니다.");
+            });
+        }
+    
+        function goBackToProfile(currentContainer) {
+            document.getElementById(currentContainer).style.display = "none";
+            document.getElementById("profile-container").style.display = "block";
+        }
+    
+        function goBackToCalendar() {
+            document.getElementById("booking-container").style.display = "none";
+            document.getElementById("calendar-container").style.display = "block";
+        }
+    </script>    
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>내 예약 확인 및 수정</title>
+    <style>
+        body {
+            background-color: skyblue;
+            font-family: Arial, sans-serif;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 20px;
+            margin: 20px;
+        }
+        button {
+            background-color: #fff;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="glass">
+        <h2>내 예약 확인 및 수정</h2>
+        <div id="reservations-list"></div>
+        <button onclick="goBack()">돌아가기</button>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const employeeNumber = params.get('employeeNumber');
+    
+        if (!employeeNumber) {
+            alert("로그인 정보가 없습니다. 다시 로그인해주세요.");
+            location.href = 'index.html';
+        }
+    
+        fetch(`https://localhost:5002/api/reservations?employeeNumber=${employeeNumber}`)
+            .then(response => response.json())
+            .then(data => {
+                const reservations = data.reservations || [];
+                const reservationsList = document.getElementById("reservations-list");
+                reservationsList.innerHTML = reservations.length > 0
+                    ? reservations.map(res => `
+                        <p>
+                            회의실: ${res.room}, 날짜: ${res.date}, 시간: ${res.time}, 목적: ${res.purpose}, 참석자: ${res.participants}명
+                        </p>
+                        <button onclick="modifyReservation('${res.room}', '${res.date}', '${res.time}')">수정</button>
+                        <button onclick="cancelReservation('${res.room}', '${res.date}', '${res.time}')">취소</button>
+                    `).join('')
+                    : "<p>예약이 없습니다.</p>";
+            })
+            .catch(err => console.error('예약 데이터를 불러오는 중 오류:', err));
+        
+        function modifyReservation(room, date, time) {
+            const updatedPurpose = prompt('변경할 회의 목적을 입력하세요:');
+            const updatedParticipants = prompt('변경할 참석 인원 수를 입력하세요:');
+    
+            if (!updatedPurpose || !updatedParticipants) {
+                alert('모든 변경 정보를 입력하세요.');
+                return;
+            }
+    
+            fetch(`https://localhost:5002/api/reservations`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ room, date, time, purpose: updatedPurpose, participants: parseInt(updatedParticipants) })
+            }).then(response => {
+                if (response.ok) {
+                    alert("예약이 수정되었습니다.");
+                    location.reload();
+                } else {
+                    alert("수정에 실패했습니다.");
+                }
+            });
+        }
+    
+        function cancelReservation(room, date, time) {
+            fetch(`https://localhost:5002/api/reservations`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ room, date, time })
+            }).then(response => {
+                if (response.ok) {
+                    alert("예약이 취소되었습니다.");
+                    location.reload();
+                } else {
+                    alert("취소에 실패했습니다.");
+                }
+            });
+        }
+
+        function goBack() {
+            location.href = 'index.html';
+        }
+    </script>    
+</body>
+</html>
