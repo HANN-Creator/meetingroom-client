@@ -155,7 +155,7 @@
         document.getElementById('reservation-button').onclick = () => {
             const employeeNumber = document.getElementById('employee-number').value.trim();
             if (employeeNumber) {
-                fetch(`https://localhost:5002/api/reservations?employeeNumber=${employeeNumber}`, {
+                fetch(`https://port-0-meeting-room-server-m38ux49ad6fe9e31.sel4.cloudtype.app/api/reservations?employeeNumber=${employeeNumber}`, {
                     headers: {
                         'Authorization': 'Bearer ' + getKerberosToken()  // Kerberos 토큰 사용
                     }
@@ -182,7 +182,7 @@
                 return;
             }
     
-            fetch('https://localhost:5002/api/login', {
+            fetch('https://port-0-meeting-room-server-m38ux49ad6fe9e31.sel4.cloudtype.app/api/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -246,7 +246,7 @@
             }
 
             // 예약된 시간 표시
-            fetch(`https://localhost:5002/api/reservations?room=${selectedRoom}&month=${selectedMonth}`, {
+            fetch(`https://port-0-meeting-room-server-m38ux49ad6fe9e31.sel4.cloudtype.app/api/reservations?room=${selectedRoom}&month=${selectedMonth}`, {
                 headers: {
                     'Authorization': 'Bearer ' + getKerberosToken()  // Kerberos 토큰 사용
                 }
@@ -297,7 +297,7 @@
             });
 
             // 예약된 시간 슬롯 표시
-            fetch(`https://localhost:5002/api/reservations?room=${selectedRoom}&date=${selectedDate}`, {
+            fetch(`https://port-0-meeting-room-server-m38ux49ad6fe9e31.sel4.cloudtype.app/api/reservations?room=${selectedRoom}&date=${selectedDate}`, {
                 headers: {
                     'Authorization': 'Bearer ' + getKerberosToken()  // Kerberos 토큰 사용
                 }
@@ -345,7 +345,7 @@
             };
 
             // API 경로로 예약 정보 전송
-            fetch('https://localhost:5002/api/reservations', {
+            fetch('https://port-0-meeting-room-server-m38ux49ad6fe9e31.sel4.cloudtype.app/api/reservations', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
