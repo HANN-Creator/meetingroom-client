@@ -50,7 +50,7 @@
             location.href = 'index.html';
         }
     
-        fetch(`https://localhost:5002/api/reservations?employeeNumber=${employeeNumber}`)
+        fetch(`https://port-0-meeting-room-server-m38ux49ad6fe9e31.sel4.cloudtype.app/api/reservations?employeeNumber=${employeeNumber}`)
             .then(response => response.json())
             .then(data => {
                 const reservations = data.reservations || [];
@@ -76,7 +76,7 @@
                 return;
             }
     
-            fetch(`https://localhost:5002/api/reservations`, {
+            fetch(`https://port-0-meeting-room-server-m38ux49ad6fe9e31.sel4.cloudtype.app/api/reservations`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ room, date, time, purpose: updatedPurpose, participants: parseInt(updatedParticipants) })
@@ -91,7 +91,7 @@
         }
     
         function cancelReservation(room, date, time) {
-            fetch(`https://localhost:5002/api/reservations`, {
+            fetch(`https://port-0-meeting-room-server-m38ux49ad6fe9e31.sel4.cloudtype.app/api/reservations`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ room, date, time })
